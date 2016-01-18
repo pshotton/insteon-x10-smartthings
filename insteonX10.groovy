@@ -1,5 +1,5 @@
 /**
- *  Insteon Switch (LOCAL)
+ *  Insteon X10 Switch/Dimmer (LOCAL)
  *
  *  Copyright 2015 umesh31@gmail.com
  *  Copyright 2014 patrick@patrickstuart.com
@@ -15,6 +15,11 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+def static ON = "280"
+def static OFF = "380"
+def static DIM = "480"
+def static BRIGHT = "580"
+def static INTER_COMMAND_SLEEP_MS = 600
 metadata {
   definition (name: "Insteon X10 Switch (LOCAL)", namespace: "pshotton", author: "umesh31@gmail.com/patrick@patrickstuart.com/tslagle13@gmail.com/goldmichael@gmail.com/phil.shotton@cloudscapesolutions.com") {
     capability "Switch Level"
@@ -24,7 +29,7 @@ metadata {
   
   preferences {
     input("InsteonIP", "string", title:"Insteon IP Address", description: "Please enter your Insteon Hub IP Address", defaultValue: "192.168.1.2", required: true, displayDuringSetup: true)
-    input("InsteonPort", "string", title:"Insteon Port", description: "Please enter your Insteon Hub Port", defaultValue: 25105, required: true, displayDuringSetup: true)
+    input("InsteonPort", "string", title:"Insteon Port", description: "Please enter your Insteon Hub Port", defaultValue: "25105", required: true, displayDuringSetup: true)
     input("InsteonHubUsername", "string", title:"Insteon Hub Username", description: "Please enter your Insteon Hub Username", defaultValue: "user" , required: true, displayDuringSetup: true)
     input("InsteonHubPassword", "password", title:"Insteon Hub Password", description: "Please enter your Insteon Hub Password", defaultValue: "password" , required: true, displayDuringSetup: true)
     input("X10HouseCode", "string", title:"Device Housecode", description: "Please enter the device HouseCode", defaultValue: "A", required: true, displayDuringSetup: true)
@@ -59,18 +64,19 @@ metadata {
 }
 
 // handle commands
+
 def on() {
   //log.debug "Executing 'take'"
-  sendCmd(11,"FF")
-  sendEvent(name: "switch", value: "on")
-  sendEvent(name: "level", value: 100)
+    sendEvent(name: "switch", value: "on")
+    sendEvent(name: "level", value: 100)
+    sendCmd(ON)
 }
 
 def off() {
   log.debug("off")
-  sendCmd(13,"00")
-  sendEvent(name: "switch", value: "off")
-  sendEvent(name: "level", value: 0)
+    sendEvent(name: "switch", value: "off")
+    sendEvent(name: "level", value: 0)
+    sendCmd(OFF)
 }
 
 
@@ -115,18 +121,24 @@ def createHubAction(path){
   }
 }
 
-def sendCmd(level){
-    def command = getX10AddressMessage()
-    sendHubCommand(createHubAction(command))
-    Thread.sleep(1000) // seems to be necessary!
-    command = "/3?0263${X10HouseCode}${level}=I=3"
-    return createHubAction(path)
+def sendCmd(cmd){
+    def addressCommand = getX10AddressMessage()
+    sendHubCommand(createHubAction(addressCommand))
+    Thread.sleep(INTER_COMMAND_SLEEP_MS) // seems to be necessary!
+    addressCommand = "/3?0263${X10HouseCode}${cmd}=I=3"
+    return createHubAction(addressCommand)
 }
 
 def getX10AddressMessage() {
-    command = "/3?0263${X10HouseCode}${X10UnitCode}=I=3"
+    "/3?0263${X10HouseCode}${X10UnitCode}=I=3"
 }
 
+/**
+ * Insteon X11 has 22 levels of brightness, bright and dim commands raise/lower by 1 level
+ * So calculate number of up/down commands to send from diff in old vs new level
+ * @param value
+ * @return
+ */
 def setLevel(value) {
   log.debug "setting level ${value}"
 
@@ -140,11 +152,11 @@ def setLevel(value) {
   }
   sendEvent(name: "switch", value: "on")
 
-  if(level.size() == 1){
-    sendCmd("0${level}")
-  }else{
-    sendCmd("${level}")
-  }
+//  if(level.size() == 1){
+//    sendCmd("0${level}")
+//  }else{
+//    sendCmd("${level}")
+//  }
 }
 
 def setLevel(value, duration) {
