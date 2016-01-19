@@ -19,7 +19,6 @@
 
 metadata {
     definition (name: "Insteon X10 Switch (LOCAL)", namespace: "pshotton", author: "umesh31@gmail.com/patrick@patrickstuart.com/tslagle13@gmail.com/goldmichael@gmail.com/phil.shotton@cloudscapesolutions.com") {
-        capability "Switch Level"
         capability "Actuator"
         capability "Switch"
     }
@@ -51,12 +50,7 @@ metadata {
             state "turningOn", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821", nextState:"turningOff"
             state "turningOff", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff", nextState:"turningOn"
         }
-        controlTile("levelSliderControl", "device.level", "slider", height: 1, width: 3, inactiveLabel: false) {
-            state "level", action:"switch level.setLevel"
-        }
-
         main(["switch"])
-        details(["switch", "levelSliderControl"])
     }
 }
 
@@ -64,7 +58,6 @@ metadata {
 
 def on() {
     sendEvent(name: "switch", value: "on")
-    sendEvent(name: "level", value: 100)
     def addressCommand = getX10AddressMessage()
     def commandCommand = getX10ControlMessage("280")
     return [ createHubAction(addressCommand), createHubAction(commandCommand) ]
@@ -73,7 +66,6 @@ def on() {
 def off() {
     log.debug("off")
     sendEvent(name: "switch", value: "off")
-    sendEvent(name: "level", value: 0)
     def addressCommand = getX10AddressMessage()
     def commandCommand = getX10ControlMessage("380")
     return [ createHubAction(addressCommand), createHubAction(commandCommand) ]
@@ -93,7 +85,7 @@ def createHubAction(path){
                 path: path,
                 headers: headers
         )
-//        log.debug hubAction
+        log.debug hubAction
         hubAction
     }
     catch (Exception e) {
@@ -102,39 +94,57 @@ def createHubAction(path){
     }
 }
 
+def parse(String description) {
+    log.debug("parse called with: ${description}")
+}
+
 def getX10AddressMessage() {
-    "/3?0263${X10HouseCode}${X10UnitCode}=I=3"
+    "/3?0263${getHouseCode()}${getUnitCode()}=I=3"
 }
 
 def getX10ControlMessage(cmd) {
-    "/3?0263${X10HouseCode}${cmd}=I=3"
+    "/3?0263${getHouseCode()}${cmd}=I=3"
 }
 
-/**
- * Insteon X11 has 22 levels of brightness, bright and dim commands raise/lower by 1 level
- * So calculate number of up/down commands to send from diff in old vs new level
- * @param value
- * @return
- */
-def setLevel(value) {
-    def hubCommands = []
-    log.debug "setting level ${value}"
-
-    def level = 255*(Math.min(value as Integer, 99))/100
-    level = Integer.toHexString(level as Integer )
-
-    log.debug "setting level ${level}"
-
-    if(value == 0){
-        return off()
-    }
-    sendEvent(name: "switch", value: "on")
+def getHouseCode() {
+    def codes = [
+            'A':'6',
+            'B':'E',
+            'C':'2',
+            'D':'A',
+            'E':'1',
+            'F':'9',
+            'G':'5',
+            'H':'D',
+            'I':'7',
+            'J':'F',
+            'K':'3',
+            'L':'B',
+            'M':'0',
+            'N':'8',
+            'O':'4',
+            'P':'C']
+    return codes[X10HouseCode]
 }
 
-def setLevel(value, duration) {
-    log.debug "setting level ${value} ${duration}"
-}
-
-def parse(String description) {
-    log.debug("parse called with: ${description}")
+def getUnitCode() {
+    def codes = [
+            '1':'600',
+            '2':'E00',
+            '3':'200',
+            '4':'A00',
+            '5':'100',
+            '6':'900',
+            '7':'500',
+            '8':'D00',
+            '9':'700',
+            '10':'F00',
+            '11':'300',
+            '12':'B00',
+            '13':'000',
+            '14':'800',
+            '15':'400',
+            '16':'C00'
+    ]
+    return codes[X10UnitCode]
 }
