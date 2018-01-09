@@ -196,7 +196,10 @@ def getUnitCode() {
 }
 
 def X10Level(level) {
-    def x10level = 22 * level / 100
+    if (level == null) {
+        return null
+    }
+    def x10level = 22 * (int)level / 100
     log.debug "Level ${level} maps to ${(int)x10level}"
     (int)x10level
 }
